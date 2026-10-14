@@ -24,19 +24,7 @@ Everything runs on private compute within the organization’s network, includin
 
 ### Proposed Architecture
 
-```mermaid
-flowchart LR
-    U[Internal users] --> API[FastAPI]
-    API --> T[Self-hosted Temporal]
-    T --> I[Ingestion workers]
-    T --> A[Agentic harness]
-    I --> S[Private file storage]
-    I --> DB[PostgreSQL with pgvector]
-    A <--> R[RAG retrieval]
-    R --> DB
-    I --> M[Private models]
-    A --> M
-```
+<img width="1718" height="724" alt="antara-architecture" src="https://github.com/user-attachments/assets/25aa3dfa-d2b8-4621-a6d5-8746f6efb556" />
 
 Temporal coordinates ingestion and agent workflows. The harness uses RAG retrieval; private models support both ingestion and agent tasks. All logs and backups stay internal.
 

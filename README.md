@@ -1,17 +1,56 @@
-# Project Ideas
+# Antara Sovereign AI
 
-## 1. Distributed RAG Pipeline with Agentic Capabilities
+### Abstract
 
-A Distributed Retrieval-Augmented Generation (RAG) platform that processes documents through independent ingestion, chunking, embedding, indexing, and retrieval services. This design allows each stage to scale independently and makes document processing more reliable through asynchronous workflows. AI agents use the retrieved content to generate grounded answers with source references, decide when additional retrieval or tools are needed, and request human approval before taking uncertain or high-impact actions. The platform can be used as an intelligent internal knowledge base for documents, policies, research material, or enterprise workflows.
+Antara Sovereign AI provides a private RAG pipeline and an agentic harness built on top of it. Multiple document workers extract text, split it into sections, generate embeddings, and build a searchable index. The agentic harness uses this retrieval layer and private language models to answer questions and carry out permitted internal tasks.
 
-## 2. Distributed Edge Inferencing
+Everything runs on private compute within the organization’s network, including models, storage, Temporal, databases, logs, and backups. No documents, queries, or model outputs leave the network. Internet egress and external model APIs are disabled, and software and models are preloaded for offline operation.
 
-A Distributed Edge Inferencing platform that runs AI models on edge devices close to users, cameras, or IoT sensors instead of relying entirely on a centralized cloud service. By processing requests locally, the system reduces response latency, lowers bandwidth usage, and protects sensitive data from unnecessary transfers. A central control plane manages edge-node registration, model deployment, health checks, routing, and monitoring, while the edge nodes continue serving requests during temporary connectivity issues. This architecture is suitable for use cases such as smart retail, video analytics, industrial monitoring, and real-time anomaly detection.
+### Business Value
 
-## 3. Airbnb with Agentic Capabilities
+- **Faster knowledge discovery:** Find information across internal documents without manually searching individual files.
+- **Privacy and control:** Keep confidential content in an organization-controlled environment and limit access to authorized users.
+- **Reliable processing:** Self-hosted Temporal coordinates both multiworker document ingestion and agent workflows, tracking progress and recovering from interruptions.
+- **A practical starting point:** Use one application, ingestion and agent workers, and a shared Temporal service. Add worker capacity as usage grows.
 
-An accommodation-booking platform inspired by Airbnb and enhanced with AI agent capabilities. Users can search properties, view availability, compare prices and amenities, make reservations, and manage their bookings, while hosts can create and manage listings. An AI travel assistant helps users express their needs in natural language—for example, finding a pet-friendly stay near public transportation—and converts those requests into relevant search filters and recommendations. The agent can also compare options, suggest itineraries, and prepare booking actions, while requiring explicit user confirmation before completing any reservation or other transaction-like action.
+### How We Protect Privacy and Control Data
 
-## 4. GeoRAG
+- **Private compute:** We will run our models, ingestion workers, agentic harness, and self-hosted Temporal entirely within our private network.
+- **No external sharing:** We will keep documents, queries, prompts, and outputs inside the network and block external model APIs and outbound internet access.
+- **Access control:** We will authenticate users and enforce document permissions so users and agents can access only authorized information and internal tools.
+- **Secure processing:** We will encrypt stored data and network traffic and use personal information only for approved purposes.
+- **Data lifecycle control:** We will set retention periods and support correction and deletion of source documents and derived data, including appropriate handling of logs and backups.
+- **Data protection rules:** We will support applicable privacy requirements through limited data use, access restrictions, retention controls, and correction and deletion workflows. We will keep internal records of access and deletion to demonstrate how we handle data.
 
-A geo-distributed Retrieval-Augmented Generation (RAG) platform that serves knowledge from regional nodes close to users instead of relying on a single centralized vector database. Each region runs its own ingestion, embedding, indexing and retrieval services connected through message queues, so queries are answered locally with lower latency, and documents bound by data-residency rules never leave their region. Frequently used shared documents are replicated asynchronously across regions, while other documents stay in their home region. When local knowledge is not enough, a query router forwards a lightweight request to other regions and merges the results. During network partitions, each region stays available and keeps ingesting and answering on its own. When connectivity returns, CRDT-based synchronization with vector clocks makes all regions eventually consistent, without duplicates or lost deletions. A central control plane manages region registration, health checks, failover, routing policies and monitoring. A test harness injects faults such as network partitions, added latency and region crashes while generating load, and measures query latency, convergence time, residency violations and availability. This architecture suits enterprise knowledge bases, legal and policy search, and regulated industries such as healthcare and finance.
+### Proposed Architecture
+
+```mermaid
+flowchart LR
+    U[Internal users] --> API[FastAPI]
+    API --> T[Self-hosted Temporal]
+    T --> I[Ingestion workers]
+    T --> A[Agentic harness]
+    I --> S[Private file storage]
+    I --> DB[PostgreSQL with pgvector]
+    A <--> R[RAG retrieval]
+    R --> DB
+    I --> M[Private models]
+    A --> M
+```
+
+Temporal coordinates ingestion and agent workflows. The harness uses RAG retrieval; private models support both ingestion and agent tasks. All logs and backups stay internal.
+
+### Proposed Technology
+
+- **Python and FastAPI:** Provide internal APIs for uploading documents, checking status, searching, deleting content, and starting agent runs.
+- **Self-hosted Temporal:** Use a private Temporal service for two workflow types: document ingestion and agent execution. It tracks progress, retries failed activities, and resumes workflows after interruptions. Its database and UI are also hosted internally.
+- **Multiworker ingestion:** Temporal coordinates extraction, chunking, embedding, and indexing across multiple Python workers. Workers perform the processing tasks and safely handle repeated attempts.
+- **Agentic harness:** Build the agent execution layer on top of the RAG pipeline. Temporal coordinates retrieval, private model calls, and permitted internal tool actions. The harness defines agent behavior and enforces document and tool permissions.
+- **PostgreSQL with pgvector:** Store document information, permissions, processing status, and searchable vectors. Make a new document version searchable only after processing completes.
+- **Private file storage:** Keep original documents and extracted text in a self-hosted S3-compatible store.
+- **Local models:** Run embedding and language models on private CPU or GPU servers for ingestion, retrieval, and agent reasoning.
+- **Docker and internal access controls:** Package the services for private deployment. Use enterprise authentication, encryption, blocked internet egress, and internal monitoring.
+
+### Reliability and Data Handling
+
+Pass references to privately stored documents, prompts, and results through Temporal where possible, limiting sensitive content in workflow history. Apply access controls and retention rules to all ingestion and agent records. Tool actions must be safe to retry or protected against duplicate execution.
